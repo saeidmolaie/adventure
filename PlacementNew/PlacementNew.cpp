@@ -2,8 +2,6 @@
 
 #include <malloc.h>
 
-size_t _size;
-
 struct Node
 {
 	int _a;
