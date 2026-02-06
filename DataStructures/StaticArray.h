@@ -1,5 +1,6 @@
 #pragma once
 
+#include <malloc.h>
 #include <stdexcept>
 
 template<typename TObject, size_t CAPACITY>
@@ -12,21 +13,31 @@ private:
 public:
 	StaticArray()
 	{
-		_buffer = new TObject[CAPACITY];
+		_buffer = Allocate(CAPACITY);
+
+		for (size_t i = 0; i < CAPACITY; i++)
+		{
+			new (_buffer + i) TObject();
+		}
 	}
 
 	~StaticArray()
 	{
-		delete[] _buffer;
+		for (size_t i = 0; i < CAPACITY; i++)
+		{
+			_buffer[i].~TObject();
+		};
+
+		std::free(_buffer);
 	}
 
 	StaticArray(const StaticArray& other)
 	{
-		_buffer = new TObject[CAPACITY];
+		_buffer = Allocate(CAPACITY);
 
-		for (size_t i = 0; i < CAPACITY; ++i)
+		for (size_t i = 0; i < CAPACITY; i++)
 		{
-			_buffer[i] = other._buffer[i];
+			new (_buffer + i) TObject(other._buffer[i]);
 		}
 	}
 
@@ -34,25 +45,31 @@ public:
 	{
 		if (this != &other)
 		{
-			for (size_t i = 0; i < CAPACITY; ++i)
+			for (size_t i = 0; i < CAPACITY; i++)
 			{
-				_buffer[i] = other._buffer[i];
+				new (_buffer + i) TObject(other._buffer[i]);
 			}
 		}
 
 		return *this;
 	}
 
-	StaticArray(StaticArray&& other) : _buffer(other._buffer)
+	StaticArray(StaticArray&& other)
 	{
+		_buffer = other._buffer;
 		other._buffer = nullptr;
 	}
 
-	StaticArray& operator=(StaticArray&& other) noexcept
+	StaticArray& operator=(StaticArray&& other)
 	{
 		if (this != &other)
 		{
-			delete[] _buffer;
+			for (size_t i = 0; i < CAPACITY; i++)
+			{
+				_buffer[i].~TObject();
+			};
+
+			std::free(_buffer);
 
 			_buffer = other._buffer;
 			other._buffer = nullptr;
@@ -62,17 +79,17 @@ public:
 	}
 
 public:
-	TObject& operator[](const size_t& index)
+	TObject& operator[](const size_t index)
 	{
 		return _buffer[index];
 	}
 
-	const TObject& operator[](const size_t& index) const
+	const TObject& operator[](const size_t index) const
 	{
 		return _buffer[index];
 	}
 
-	TObject& At(const size_t& index)
+	TObject& At(const size_t index)
 	{
 		if (index >= CAPACITY)
 			throw std::out_of_range(
@@ -81,7 +98,7 @@ public:
 		return _buffer[index];
 	}
 
-	const TObject& At(const size_t& index) const
+	const TObject& At(const size_t index) const
 	{
 		if (index >= CAPACITY)
 			throw std::out_of_range(
@@ -93,5 +110,11 @@ public:
 	constexpr size_t Capacity() const
 	{
 		return CAPACITY;
+	}
+
+private:
+	TObject* Allocate(const size_t capacity)
+	{
+		return (TObject*)std::malloc(sizeof(TObject) * capacity);
 	}
 };
